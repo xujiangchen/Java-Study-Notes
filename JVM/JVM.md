@@ -136,5 +136,7 @@ Native关键字修饰的方法叫做本地方法，本地方法和其它方法�
 堆的内存模型大致为(以jdk1.8为例)：
 
 ![java1.8堆内存模型](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/asset/1.8%E5%A0%86%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B.jpg)
+
 **实战**
+
 ![java堆](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/asset/java%E5%A0%86.jpg)
