@@ -51,7 +51,7 @@ public class User{
 }
 ```
 
-![程序计数器]()
+![程序计数器](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/asset/%E7%A8%8B%E5%BA%8F%E8%AE%A1%E6%95%B0%E5%99%A8.jpg)
 
 ## 3、JAVA虚拟机栈
 
@@ -92,7 +92,7 @@ public class A {
 }
 ```
 
-![虚拟机栈]()
+![虚拟机栈](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/asset/%E8%99%9A%E6%8B%9F%E6%9C%BA%E6%A0%88.jpg)
 
 ## 4、本地方法栈
 
@@ -114,7 +114,7 @@ Native关键字修饰的方法叫做本地方法，本地方法和其它方法�
 
 > HotSpot虚拟机是SunJDK和OpenJDK中所带的虚拟机，也是目前使用范围最广的Java虚拟机。HotSpot只是jvm实现的一种方式而已
 
-![Hotshot]()
+![Hotshot](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/asset/Hotshot.jpg)
 
 ## 5、Java堆
 
@@ -135,5 +135,6 @@ Native关键字修饰的方法叫做本地方法，本地方法和其它方法�
 
 堆的内存模型大致为(以jdk1.8为例)：
 
-![java1.8堆内存模型]()
-
+![java1.8堆内存模型](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/asset/1.8%E5%A0%86%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B.jpg)
+**实战**
+![java堆](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/asset/java%E5%A0%86.jpg)
