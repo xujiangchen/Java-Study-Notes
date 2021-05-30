@@ -12,7 +12,7 @@
 ​	JVM是Java Virtual Machine（Java虚拟机）的缩写，JVM是一种用于计算设备的规范，它是一个虚构出来的计算机，是通过在实际的计算机上仿真模拟各种计算机功能来实现的。
 
 - [JVM基础知识](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/JVM%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86%E7%82%B9.md)
-- [对象]()
+- [对象](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/%E5%AF%B9%E8%B1%A1.md)
 - [垃圾回收涉及的主要算法]()
 - [JVM垃圾收集器]()
 - [内存分配]()
