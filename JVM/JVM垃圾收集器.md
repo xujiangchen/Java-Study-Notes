@@ -93,3 +93,22 @@ CMS收集器：Mostly-Concurrent收集器，也称并发标记清除收集器（
 
 ![CMS收集器](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/asset/cms%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8.jpg)
 
+## 7、G1收集器
+> G1是一款面向服务端应用的垃圾收集器
+
+**步骤**
+- 初始标记（Initial Marking） --标记一下 GC Roots 能直接关联到的对象
+- 并发标记（Concurrent Marking）---从GC Root 开始对堆中对象进行可达性分析，找出存活的对象，这阶段耗时较长，但可与用户程序并发执行
+- 最终标记（Final Marking) ---为了修正在并发标记期间因用户程序继续运作而导致标记产生
+变动的那一部分标记记录。虚拟机将这段时间对象变化记录在线程 Remembered Set Logs里面，最终标记阶段需要把 Remembered Set Logs的数据合并到 Remembered Set 中
+- 筛选回收（Live Data Counting and Evacuation)
+
+**扩展**
+
+G1的每个region都有一个Remember Set(Rset)
+这个数据结构，用来保存别的region的对象对我这个region的对象的引用，通过Remember Set我们可以找到哪些对象引用了当前region的对象
+
+**优势**
+1. **空间整合**：基于“标记-整理”算法实现为主和Region之间采用复制算法实现的垃圾收集
+2. **可预测的停顿**：这是 G1 相对于 CMS 的另一个优势，降低停顿时间是 G1 和 CMS 共同的关注点，但 G1除了追求低停顿外，还能建立可预测的停顿时间模型
+3. 在 G1 之前的其他收集器进行收集的范围都是整个新生代或者老年代，而G1 不再是这样。使用 G1收集器时，Java堆的内存布局就与其他收集器有很大差别，它将整个 Java雄划分为多个大小相等的独立区域（Region），虽然还保留有新生代和老年代的概念，但新**生代和老年代不再是物理隔离的了，它们都是一部分 Region（不需要连续）的集合**。
