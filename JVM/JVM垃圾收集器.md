@@ -1,3 +1,13 @@
+- [1、serial垃圾收集器](#1-serial-----)
+- [2、serial old 垃圾收集器](#2-serial-old------)
+- [3、PerNew垃圾收集器](#3-pernew-----)
+- [4、Parallel Scavenge收集器](#4-parallel-scavenge---)
+    + [4.1 Parallel Scavenge 是什么？](#41-parallel-scavenge-----)
+    + [4.2 Parallel Scavenge 应用场景](#42-parallel-scavenge-----)
+    + [4.3 Parallel Scavenge 的参数设置](#43-parallel-scavenge------)
+- [5、Parallel Old收集器](#5-parallel-old---)
+- [6、CMS收集器](#6-cms---)
+
 ## 1、serial垃圾收集器
 - serial 回收器是最基础，历史最悠久的收集器，用于**新生代**
 - Serial是一个**单线程**的垃圾收集器
@@ -12,7 +22,7 @@
 
 1. 垃圾回收速度较慢且回收能力有限
 
-![serial垃圾收集器]()
+![serial垃圾收集器](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/asset/serial%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8.jpg)
 
 ## 2、serial old 垃圾收集器
 - Serial Old是 Serial收集器的老年代版本
@@ -25,7 +35,7 @@
 -  ParNew垃圾收集器是Serial收集器的**多线程**版本。**除了多线程外，其余的行为、特点和Serial收集器一样**。
 - 可以**使用-XX: ParallelGCThreads参数**来限制垃圾收集的线程数。一般设置和CPU的核数相等即可，但也不用太多，会产生线程上下文切换的时耗。
 
-![PerNew垃圾收集器]()
+![PerNew垃圾收集器](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/asset/parnew%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8.jpg)
 
 ## 4、Parallel Scavenge收集器
 
@@ -81,5 +91,5 @@ CMS收集器：Mostly-Concurrent收集器，也称并发标记清除收集器（
 - 无法处理浮动垃圾，程序在进行并发清除阶段⽤户线程所产生的新垃圾叫做浮动垃圾
 - 标记-清除算法会产生空间碎片
 
-![CMS收集器]()
+![CMS收集器](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/asset/cms%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8.jpg)
 
