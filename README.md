@@ -14,6 +14,6 @@
 - [JVM基础知识](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/JVM%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86%E7%82%B9.md)
 - [对象](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/%E5%AF%B9%E8%B1%A1.md)
 - [垃圾回收涉及的主要算法](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E6%B6%89%E5%8F%8A%E7%9A%84%E4%B8%BB%E8%A6%81%E7%AE%97%E6%B3%95.md)
-- [JVM垃圾收集器]()
+- [JVM垃圾收集器](https://github.com/xujiangchen/Java-Study-Notes/blob/main/JVM/JVM%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8.md)
 - [内存分配]()
 
