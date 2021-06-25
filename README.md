@@ -19,5 +19,6 @@
 
 ## Springboot
 
-- [springboot基础注解](https://github.com/xujiangchen/Java-Study-Notes/blob/main/springboot/SpringBoot%20%E6%B3%A8%E8%A7%A3.md)
-- [springboot目录结构](https://github.com/xujiangchen/Java-Study-Notes/blob/main/springboot/Springboot%20%E7%9A%84%E7%9B%AE%E5%BD%95%E7%BB%93%E6%9E%84.md)
+- [Springboot基础注解](https://github.com/xujiangchen/Java-Study-Notes/blob/main/springboot/SpringBoot%20%E6%B3%A8%E8%A7%A3.md)
+- [Springboot目录结构](https://github.com/xujiangchen/Java-Study-Notes/blob/main/springboot/Springboot%20%E7%9A%84%E7%9B%AE%E5%BD%95%E7%BB%93%E6%9E%84.md)
+- [Springboot异常处理](https://github.com/xujiangchen/Java-Study-Notes/blob/main/springboot/springboot%20%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86.md)
