@@ -1,3 +1,14 @@
+- [HTTP Parameter Pollution](#http-parameter-pollution)
+- [Portability Flaw：Locale Dependent Comparison](#portability-flaw--locale-dependent-comparison)
+- [Header Manipulation](#header-manipulation)
+- [Insecure Randomness](#insecure-randomness)
+    + [前段解决该漏洞方法](#前段解决该漏洞方法)
+    + [后台解决方法](#后台解决方法)
+- [Path Manipulation](#path-manipulation)
+- [Log Forging](#log-forging)
+- [Mass Assignment:Insecure Binder Configuration](#mass-assignment-insecure-binder-configuration)
+
+
 ## HTTP Parameter Pollution
 
 **HPP是HTTP Parameter Pollution的缩写，意为HTTP参数污染。**
