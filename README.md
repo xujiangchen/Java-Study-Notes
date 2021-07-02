@@ -27,3 +27,7 @@
 
 ## 漏洞相关
 - [Java代码扫描中常见的漏洞和相应解决方法](https://github.com/xujiangchen/Java-Study-Notes/blob/main/%E5%B8%B8%E8%A7%81Java%E6%BC%8F%E6%B4%9E%E7%B1%BB%E5%9E%8B%E5%92%8C%E5%85%B7%E4%BD%93%E8%A7%A3%E5%86%B3%E6%96%B9%E6%B3%95.md#portability-flaw--locale-dependent-comparison)
+
+
+## Nginx
+- [Nginx的安装和启动](https://github.com/xujiangchen/Java-Study-Notes/blob/main/Ngnix/%E5%AE%89%E8%A3%85Nginx.md)
