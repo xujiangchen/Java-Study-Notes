@@ -31,3 +31,4 @@
 
 ## Nginx
 - [Nginx的安装和启动](https://github.com/xujiangchen/Java-Study-Notes/blob/main/Ngnix/%E5%AE%89%E8%A3%85Nginx.md)
+- [Nginx的目录以及配置文件](https://github.com/xujiangchen/Java-Study-Notes/blob/main/Ngnix/Nginx%E7%9B%AE%E5%BD%95%E6%96%87%E4%BB%B6.md)
