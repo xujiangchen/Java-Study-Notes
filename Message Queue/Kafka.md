@@ -3,6 +3,11 @@
 - [三、Linux环境中安装Kafka](#三Linux环境中安装Kafka)
     - [3.1 安装Zookeeper](#31-安装Zookeeper)
     - [3.2 安装Kafka](#32-安装Kafka)
+- [四、Kafka点对点-发布订阅](#四Kafka点对点-发布订阅)
+    - [4.1 命令行进行生产和消费](#41-命令进行生产和消费)
+    - [4.2 Kafka消费者组配置实现点对点消费模型](#42-Kafka消费者组配置实现点对点消费模型)
+    - [4.3 Kafka消费者组配置实现发布订阅消费模型](#43-Kafka消费者组配置实现发布订阅消费模型)
+    - [4.5 Kafka数据存储流程和原理概述和LEO+HW讲解](#45-Kafka数据存储流程和原理概述和LEO-HW讲解)
 
 # Kafka
 
@@ -137,3 +142,108 @@ cd /tmp/kafka-logs/
 ```
 ./kafka-topics.sh --list --zookeeper 外网ip:2181
 ```
+
+- 守护进程启动kafka
+```
+./kafka-server-start.sh -daemon ../config/server.properties &
+```
+
+## 四、Kafka点对点-发布订阅
+
+### 4.1 命令行进行生产和消费
+- 创建topic
+```
+./kafka-topics.sh --create --zookeeper 外网ip:2181 --replication-factor 1 --partitions 2 --topic version1-topic
+```
+
+- 查看topic
+```
+./kafka-topics.sh --list --zookeeper 外网ip:2181
+```
+
+- 生产者发送消息
+```
+# --topic 后面为指定的topic，默认配置下如果没有，就会自动创建topic
+# 真实开发时建议将这个设置给关闭
+
+./kafka-console-producer.sh --broker-list 外网ip:9092  --topic version1-topic
+```
+
+- 消费者消费消息
+```
+#  --from-beginning：从头开始消费，并不会使用偏移量（上次消费到哪），会把主题中以往所有的数据都读取出来, 重启后会有这个重复消费
+
+./kafka-console-consumer.sh --bootstrap-server 外网ip:9092 --from-beginning --topic version1-topic
+```
+
+- 删除topic
+topic 删除的时候，并不是立即删除，而是先改名字，检查相关配置，再进行真实删除
+```
+./kafka-topics.sh --zookeeper 外网ip:2181 --delete --topic version1-topic
+```
+
+- 查看broker节点topic状态信息
+```
+./kafka-topics.sh --describe --zookeeper 外网ip:2181  --topic version1-topic
+```
+
+### 4.2 Kafka消费者组配置实现点对点消费模型
+
+**一个分区，只能被消费者组下的某一个消费者进行消费**
+
+**编辑消费者配置**
+
+默认的消费者配置文件在，`config/consumer.properties` ,其中指定了相关的消费者配置项包括消费者组，**注意：不要认为默认启动消费者不指定配置文件时用的就时该文件**。在编辑该文件的时候，应该先拷贝一份，再进行修改
+
+- 指定配置文件开启消费者
+```
+./kafka-console-consumer.sh --bootstrap-server 外网ip:9092 --from-beginning --topic version1-topic --consumer.config ../config/consumer.properties
+```
+### 4.3 Kafka消费者组配置实现发布订阅消费模型
+**两个不同消费者组的节点，都可以消费到消息，实现发布订阅模型**
+- 创建两个消费者配置（确保group.id 不一样）
+- 创建topic, 2个分区
+```
+./kafka-topics.sh --create --zookeeper 外网ip:2181 --replication-factor 1 --partitions 2 --topic t2
+```
+- 指定配置文件启动 两个消费者
+```
+./kafka-console-consumer.sh --bootstrap-server 112.74.55.160:9092 --from-beginning --topic t1 --consumer.config ../config/consumer-1.properties
+​
+./kafka-console-consumer.sh --bootstrap-server 112.74.55.160:9092 --from-beginning --topic t1 --consumer.config ../config/consumer-2.properties
+```
+
+### 4.5 Kafka数据存储流程和原理概述和LEO+HW讲解
+
+- **Partition：**
+    - topic物理上的分组，一个topic可以分为多个partition，每个partition是一个**有序的队列**。
+    - 是以文件夹的形式存储在具体Broker本机上
+
+![Partition](https://github.com/xujiangchen/Java-Study-Notes/blob/main/Message%20Queue/imgs/Partition.png)
+
+- **LEO（LogEndOffset）**
+    - 表示每个partition的log最后一条Message的位置
+
+- **HW（HighWatermark）**
+    - 表示partition各个replicas数据间同步且一致的offset位置，即表示allreplicas已经commit的位置
+    - HW之前的数据才是Commit后的，对消费者才可见
+    - ISR集合里面最小leo
+
+![LEO AND HW](https://github.com/xujiangchen/Java-Study-Notes/blob/main/Message%20Queue/imgs/HW%E5%92%8CLEO.png)
+
+- **offset**
+    - 每个partition都由一系列有序的、不可变的消息组成，这些消息被连续的追加到partition中
+    - partition中的每个消息都有一个连续的序列号叫做offset，用于partition唯一标识一条消息
+    - 可以认为offset是partition中Message的id
+
+- **Segment**
+    - segment file 由2部分组成，分别为index file和data file（log file）
+    - 两个文件是一一对应的，后缀”.index”和”.log”分别表示索引文件和数据文件
+    - 命名规则：partition的第一个segment从0开始，后续每个segment文件名为上一个segment文件最后一条消息的offset+1
+
+![整体架构](https://github.com/xujiangchen/Java-Study-Notes/blob/main/Message%20Queue/imgs/%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84.png)
+
+- **Kafka高效文件存储设计特点：**
+    - Kafka把topic中一个parition大文件分成多个小文件段，通过多个小文件段，就容易定期清除或删除已经消费完文件，减少磁盘占用。
+    - 通过索引信息可以快速定位message
+    - producer生产数据，要写入到log文件中，写的过程中一直追加到文件末尾，为顺序写，官网数据表明。同样的磁盘，顺序写能到600M/S，而随机写只有100K/S
