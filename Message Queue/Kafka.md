@@ -8,6 +8,18 @@
     - [4.2 Kafka消费者组配置实现点对点消费模型](#42-Kafka消费者组配置实现点对点消费模型)
     - [4.3 Kafka消费者组配置实现发布订阅消费模型](#43-Kafka消费者组配置实现发布订阅消费模型)
     - [4.5 Kafka数据存储流程和原理概述和LEO+HW讲解](#45-Kafka数据存储流程和原理概述和LEO-HW讲解)
+- [五、Springboot整合kafka](#五Springboot整合kafka)
+    - [5.1 Admin相关Api](#51-Admin相关Api)
+        - [5.1.1 配置客户端](#511-配置客户端)
+        - [5.1.2 创建Topic](#512-创建Topic)
+        - [5.1.3 列举Topic](#513-列举Topic)
+        - [5.1.4 删除Topic](#514-删除Topic)
+        - [5.1.5 查看Topic详情](#515-查看Topic详情)
+        - [5.1.6 增加分区数量](#516-增加分区数量)
+    - [5.2 生产者相关Api](#52-生产者相关Api)
+        - [5.2.1 发送分区策略和常见配置](#521-发送分区策略和常见配置)
+        - [5.2.2 封装配置属性](#522-封装配置属性)
+        - [5.2.3 生产者投递消息(同步发送)](#523-生产者投递消息(同步发送))
 
 # Kafka
 
@@ -247,3 +259,220 @@ topic 删除的时候，并不是立即删除，而是先改名字，检查相�
     - Kafka把topic中一个parition大文件分成多个小文件段，通过多个小文件段，就容易定期清除或删除已经消费完文件，减少磁盘占用。
     - 通过索引信息可以快速定位message
     - producer生产数据，要写入到log文件中，写的过程中一直追加到文件末尾，为顺序写，官网数据表明。同样的磁盘，顺序写能到600M/S，而随机写只有100K/S
+
+
+## 五、Springboot整合kafka
+
+### 5.1 Admin相关Api
+
+#### 5.1.1 配置客户端
+```java
+public static AdminClient initAdminClient(){
+    Properties properties = new Properties();
+    // 设置连接地址
+    properties.setProperty(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    AdminClient adminClient = AdminClient.create(properties);
+    return adminClient;
+}
+```
+
+#### 5.1.2 创建Topic
+```java
+private static final String TOPIC_NAME = "demo-topic";
+
+public void createTopic(){
+    AdminClient adminClient = initAdminClient();
+
+    // 指定分区数量，副本数量
+    NewTopic newTopic = new NewTopic(TOPIC_NAME, 2, (short)1);
+    CreateTopicsResult createTopicsResult = adminClient.createTopics(Arrays.asList(newTopic));
+
+    try {
+        //future等待创建，成功不会有任何报错，如果创建失败和超时会报错。
+        createTopicsResult.all().get();
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    } catch (ExecutionException e) {
+        e.printStackTrace();
+    }
+}
+```
+#### 5.1.3 列举Topic
+```java
+public void listTopic(){
+    AdminClient adminClient = initAdminClient();
+    // 不带参数返回的是用户自己创建的相关Topic
+    ListTopicsResult listTopicsResult = adminClient.listTopics();
+    try {
+        Set<String> topicSet = listTopicsResult.names().get();
+        for (String item:topicSet) {
+            System.err.println(item);
+        }
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    } catch (ExecutionException e) {
+        e.printStackTrace();
+    }
+    
+    // 如果想带参数进行查询
+    ListTopicsOptions listTopicsOptions = new ListTopicsOptions();
+    // 展示kafka内部创建的topic
+    listTopicsOptions.listInternal(true);
+    ListTopicsResult listTopicsResult2 = adminClient.listTopics(listTopicsOptions);
+    try {
+        Set<String> topicSet = listTopicsResult2.names().get();
+        for (String item:topicSet) {
+            System.err.println(item);
+        }
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    } catch (ExecutionException e) {
+        e.printStackTrace();
+    }
+}
+```
+
+#### 5.1.4 删除Topic
+```java
+public void delTopic(){
+    AdminClient adminClient = initAdminClient();
+    DeleteTopicsResult deleteTopicsResult = adminClient.deleteTopics(Arrays.asList("xudemo-topic"));
+    try {
+        deleteTopicsResult.all().get();
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    } catch (ExecutionException e) {
+        e.printStackTrace();
+    }
+}
+```
+#### 5.1.5 查看Topic详情
+```java
+public void detailTopic(){
+    AdminClient adminClient = initAdminClient();
+    DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(Arrays.asList(TOPIC_NAME));
+    try {
+        Map<String, TopicDescription> stringTopicDescriptionMap = describeTopicsResult.all().get();
+        Set<Map.Entry<String, TopicDescription>> entries = stringTopicDescriptionMap.entrySet();
+        entries.stream().forEach((entry)-> System.out.println("name:" + entry.getKey() + " value:" + entry.getValue()));
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    } catch (ExecutionException e) {
+        e.printStackTrace();
+    }
+}
+```
+
+#### 5.1.6 增加分区数量
+- Kafka中的分区数只能增加不能减少，减少的话数据不知怎么处理
+```java
+public void  incrPartitions(){
+    Map<String, NewPartitions> infoMap = new HashMap<>();
+    // 分区增加到5个
+    NewPartitions newPartitions = NewPartitions.increaseTo(5);
+    AdminClient adminClient = initAdminClient();
+    infoMap.put(TOPIC_NAME, newPartitions);
+    // 创建分区
+​    CreatePartitionsResult createPartitionsResult = adminClient.createPartitions(infoMap);
+    try {
+        createPartitionsResult.all().get();
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    } catch (ExecutionException e) {
+        e.printStackTrace();
+    }
+}
+```
+
+### 5.2 生产者相关Api
+
+#### 5.2.1 发送分区策略和常见配置
+- 如果指定Partition ID,则PR(ProducerRecord)被发送至指定Partition
+- 如果未指定Partition ID,但发送方的消息中指定了Key, PR会按照hash(key)发送至对应Partition
+- 如果未指定Partition ID,也没指定Key，PR会按照默认 round-robin轮训模式发送到每个Partition
+- 如果同时指定了Partition ID和Key, PR只会发送到指定的Partition 
+
+![Partition](https://github.com/xujiangchen/Java-Study-Notes/blob/main/Message%20Queue/imgs/sendModel.png)
+**生产者常见配置**
+- 官方文档 http://kafka.apache.org/documentation/#producerconfigs
+
+
+#### 5.2.2 封装配置属性
+```java
+public static Properties getProperties(){
+
+    Properties props = new Properties();
+
+    props.put("bootstrap.servers", "118.190.132.65:9092");
+
+    // 当producer向leader发送数据时，可以通过request.required.acks参数来设置数据可靠性的级别,分别是0, 1，all。
+    props.put("acks", "all");
+
+
+    // 请求失败，生产者会自动重试，指定是0次，如果启用重试，则会有重复消息的可能性
+    props.put("retries", 0);
+
+    // 生产者缓存每个分区未发送的消息,缓存的大小是通过 batch.size 配置指定的，默认值是16KB
+    props.put("batch.size", 16384);
+
+    /**
+        * 默认值就是0，消息是立刻发送的，即便batch.size缓冲空间还没有满
+        * 如果想减少请求的数量，可以设置 linger.ms 大于0，即消息在缓冲区保留的时间，超过设置的值就会被提交到服务端
+        * 通俗解释是，本该早就发出去的消息被迫至少等待了linger.ms时间，相对于这时间内积累了更多消息，批量发送减少请求
+        * 如果batch被填满或者linger.ms达到上限，满足其中一个就会被发送
+        */
+    props.put("linger.ms", 1);
+
+    /**
+        * buffer.memory的用来约束Kafka Producer能够使用的内存缓冲的大小的，默认值32MB。
+        * 如果buffer.memory设置的太小，可能导致消息快速的写入内存缓冲里，但Sender线程来不及把消息发送到Kafka服务器
+        * 会造成内存缓冲很快就被写满，而一旦被写满，就会阻塞用户线程，不让继续往Kafka写消息了
+        * buffer.memory要大于batch.size，否则会报申请内存不#足的错误，不要超过物理内存，根据实际情况调整
+        * 需要结合实际业务情况压测进行配置
+        */
+    props.put("buffer.memory", 33554432);
+
+    /**
+        * key的序列化器，将用户提供的 key和value对象ProducerRecord 进行序列化处理，key.serializer必须被设置，
+        * 即使消息中没有指定key，序列化器必须是一个实
+        org.apache.kafka.common.serialization.Serializer接口的类，
+        * 将key序列化成字节数组。
+        */
+    props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    props.put("value.serializer","org.apache.kafka.common.serialization.StringSerializer");
+    return props;
+}
+```
+#### 5.2.3 生产者投递消息(同步发送)
+```java
+/**
+    * send()方法是异步的，添加消息到缓冲区等待发送，并立即返回
+    * 生产者将单个的消息批量在一起发送来提高效率,即 batch.size和linger.ms结合
+    *
+    * 实现同步发送：一条消息发送之后，会阻塞当前线程，直至返回 ack
+    * 发送消息后返回的一个 Future 对象，调用get即可
+    *
+    * 消息发送主要是两个线程：一个是Main用户主线程，一个是Sender线程
+    *  1)main线程发送消息到RecordAccumulator即返回
+    *  2)sender线程从RecordAccumulator拉取信息发送到broker
+    *  3) batch.size和linger.ms两个参数可以影响 sender 线程发送次数
+    */
+public void sender(){
+    Properties properties = getProperties();
+    Producer<String, String> producer = new KafkaProducer<String, String>(properties);
+    for (int i = 0; i < 3 ; i++) {
+        Future<RecordMetadata> future = producer.send(new ProducerRecord<>("demo-topic", "demo-key" + i, "demo-value" + i));
+        try {
+            // 如果不关心结果，以下代码无用
+            // 同样这段代码实现了同步发送的功能
+            RecordMetadata recordMetadata = future.get();
+            System.out.println("发送状态码：" + recordMetadata.toString());
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+    producer.close();
+}
+```
