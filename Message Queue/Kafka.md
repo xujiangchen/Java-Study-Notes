@@ -20,6 +20,11 @@
         - [5.2.1 发送分区策略和常见配置](#521-发送分区策略和常见配置)
         - [5.2.2 封装配置属性](#522-封装配置属性)
         - [5.2.3 生产者投递消息(同步发送)](#523-生产者投递消息(同步发送))
+        - [5.2.4 回调函数](#524-回调函数)
+        - [5.2.5 生产者发送指定分区](#525-生产者发送指定分区)
+        - [5.2.6 生产者自定义partition分区规则](#526-生产者自定义partition分区规则)
+    - [5.3 消费者相关Api](#53消费者相关Api)
+        - [5.3.1 消费者机制和分区策略](#531-消费者机制和分区策略)
 
 # Kafka
 
@@ -476,3 +481,126 @@ public void sender(){
     producer.close();
 }
 ```
+#### 5.2.4 回调函数
+- 生产者发送消息是异步调用，怎么知道是否有异常？发送消息配置回调函数即可
+```java
+public void sendWithCallback(){
+    Properties props = getProperties();
+    Producer<String, String> producer = new KafkaProducer<String, String>(props);
+    for (int i = 0; i < 3 ; i++) {
+        producer.send(new ProducerRecord<>("demo-topic", "demo-key" + i, "demo-value" + i), new Callback() {
+            @Override
+            public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                if (e == null){
+                    System.err.println("发送状态:"+recordMetadata.toString());
+                }else {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+    producer.close();
+}
+```
+
+#### 5.2.5 生产者发送指定分区
+```java
+public void sendAppointPartition(){
+    Properties properties = getProperties();
+    Producer<String, String> producer = new KafkaProducer<String, String>(properties);
+    for (int i = 0; i < 3 ; i++) {
+        // 在发送时第二个参数指定分区编号，分区编号从0开始
+        // 如果发送到一个不存在的分区编号，则会报错
+        producer.send(new ProducerRecord<>("demo-topic", 2, "demo-key" + i, "demo-value" + i), new Callback() {
+            @Override
+            public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                if (e == null){
+                    System.err.println("发送状态:"+recordMetadata.toString());
+                }else {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+}
+```
+
+#### 5.2.6 生产者自定义partition分区规则
+- 创建类，实现Partitioner接口，重写方法
+```java
+public class demoPartitioner implements Partitioner {
+
+    @Override
+    public int partition(String topic, Object key, byte[] keyBytes, Object value, byte[] valueBytes, Cluster cluster) {
+        // 如果key为空则给出异常消息
+        if (keyBytes == null){
+            throw new IllegalArgumentException("Key 参数不能为空");
+        }
+
+        // 如果key等于demo，则放到分区编号为0的分区里面
+        if ("demo".equals(key)){
+            return 0;
+        }
+
+        // 否则根据默认hash取模对消息进行分布
+        List<PartitionInfo> partitions = cluster.partitionsForTopic(topic);
+        int numPartitions = partitions.size();
+        return Utils.toPositive(Utils.murmur2(keyBytes)) % numPartitions;
+    }
+
+    @Override
+    public void close() {
+
+    }
+
+    @Override
+    public void configure(Map<String, ?> map) {
+
+    }
+}
+```
+- 使用自定义的分区策略
+```java
+public void sendAppointPartition(){
+    Properties properties = getProperties();
+    // 指定分区策略
+    props.put("partitioner.class", "com.blaster.kafkademo.config.demoPartitioner");
+    Producer<String, String> producer = new KafkaProducer<String, String>(properties);
+    for (int i = 0; i < 3 ; i++) {
+        producer.send(new ProducerRecord<>("demo-topic", "demo-key" + i, "demo-value" + i), new Callback() {
+            @Override
+            public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                if (e == null){
+                    System.err.println("发送状态:"+recordMetadata.toString());
+                }else {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+}
+```
+
+### 5.3 消费者相关Api
+
+#### 5.3.1 消费者机制和分区策略
+- **round-robin （RoundRobinAssignor非默认策略）轮训**
+
+原理是将消费组内所有消费者以及消费者所订阅的所有topic的partition按照字典序排序，然后通过轮询方式逐个将分区以此分配给每个消费者。如果同一个消费组内所有的消费者的订阅信息都是相同的，那么RoundRobinAssignor策略的分区分配会是均匀的。
+
+![Partition](https://github.com/xujiangchen/Java-Study-Notes/blob/main/Message%20Queue/imgs/RoundRobinAssignor.png)
+
+它存在的弊端
+
+![Partition](https://github.com/xujiangchen/Java-Study-Notes/blob/main/Message%20Queue/imgs/RoundRobinAssignor2.png)
+
+
+- **range （RangeAssignor默认策略）范围**
+
+按照主进行分配，如果不平均分配，则第一个消费者会分配比较多分区， 一个消费者监听不同主题也不影响。
+
+![Partition](https://github.com/xujiangchen/Java-Study-Notes/blob/main/Message%20Queue/imgs/RangeAssignor.png)
+
+它存在的弊端：
+
+如果有 N 多个 topic，那么针对每个 topic，消费者 C-1 都将多消费 1 个分区，topic越多则消费的分区也越多，则性能有所下降
