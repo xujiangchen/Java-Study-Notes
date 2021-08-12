@@ -25,6 +25,10 @@
         - [5.2.6 生产者自定义partition分区规则](#526-生产者自定义partition分区规则)
     - [5.3 消费者相关Api](#53消费者相关Api)
         - [5.3.1 消费者机制和分区策略](#531-消费者机制和分区策略)
+        - [5.3.2 消费者重新分配策略和offset维护机制](#532-消费者重新分配策略和offset维护机制)
+        - [5.3.3 Kafka调试日志配置](#533-Kafka调试日志配置)
+        - [5.3.4 Consumer配置和消费订阅](#534-Consumer配置和消费订阅)
+        - [5.3.5 手工提交offset](#535-手工提交offset)
 
 # Kafka
 
@@ -604,3 +608,144 @@ public void sendAppointPartition(){
 它存在的弊端：
 
 如果有 N 多个 topic，那么针对每个 topic，消费者 C-1 都将多消费 1 个分区，topic越多则消费的分区也越多，则性能有所下降
+
+#### 5.3.2 消费者重新分配策略和offset维护机制
+
+- **什么是Rebalance操作:** 
+    - kafka 怎么均匀地分配某个 topic 下的所有 partition 到各个消费者，从而使得消息的消费速度达到最快，这就是平衡（balance），前面讲了 Range 范围分区 和 RoundRobin 轮询分区，也支持自定义分区策略。
+    - 而 rebalance（重平衡）其实就是重新进行 partition 的分配，从而使得 partition 的分配重新达到平衡状态
+
+> 例如70个分区，10个消费者，但是先启动一个消费者，后续再启动一个消费者，这个会怎么分配？
+> 
+> Kafka 会进行一次分区分配操作，即 Kafka 消费者端的 Rebalance 操作 ，下面都会发生rebalance操作:
+>
+> 1.当消费者组内的消费者数量发生变化（增加或者减少），就会产生重新分配patition
+>
+> 2.分区数量发生变化时(即 topic 的分区数量发生变化时)
+>
+
+- **当消费者在消费过程突然宕机了，重新恢复后是从哪里消费，会有什么问题？**
+    - 消费者会记录offset，故障恢复后从这里继续消费
+    - 记录在zk里面和本地，新版默认将offset保证在kafka的内置topic中，名称是 __consumer_offsets
+    - 由 消费者组名+主题+分区，确定唯一的offset的key，从而获取对应的值
+    - 三元组：group.id+topic+分区号，而 value 就是 offset 的值
+
+
+#### 5.3.3 Kafka调试日志配置
+```yml
+logging:
+  config: classpath:logback.xml
+```
+```xml
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <!-- 格式化输出： %d表示日期， %thread表示线程名， %-5level: 级别从左显示5个字符宽度 %msg:日志消息, %n是换行符 -->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS}[%thread] %-5level %logger{50} - %msg%n</pattern>
+        </encoder>
+    </appender>
+​
+    <root level="info">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>
+```
+
+#### 5.3.4 Consumer配置和消费订阅
+- **配置信息：**
+```java
+public static Properties getProperties() {
+    Properties props = new Properties();
+​
+    //broker地址
+    props.put("bootstrap.servers", "ip:9092");
+​
+    //消费者分组ID，分组内的消费者只能消费该消息一次，不同分组内的消费者可以重复消费该消息
+    props.put("group.id", "");
+​
+    //开启自动提交offset
+    props.put("enable.auto.commit", "true");
+​
+    //自动提交offset延迟时间
+    props.put("auto.commit.interval.ms", "1000");
+​
+    //反序列化
+    props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+    props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+​
+    return props;
+}
+```
+- **消费者订阅：**
+```java
+public void simpleConsumer(){
+    // 获取配置信息
+    Properties properties = getProperties();
+    // 创建消费者
+    KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<String, String>(properties);
+    // 订阅他topic
+    kafkaConsumer.subscribe(Arrays.asList("demo-topic"));
+    while (true){
+        //拉取时间控制，阻塞超时时间
+        ConsumerRecords<String, String> poll = kafkaConsumer.poll(Duration.ofMillis(100));
+        for (ConsumerRecord record : poll){
+            System.err.printf("topic = %s, offset = %d, key = %s, value = %s%n",record.topic(), record.offset(), record.key(), record.value());
+        }
+    }
+}
+```
+- **重新从头消费：**
+    - auto.offset.reset 配置策略即可 `props.put("auto.offset.reset","earliest")`
+    - 消费者组名变更
+
+#### 5.3.5 手工提交offset
+
+- 自动提交offset问题:
+```
+在实际使用中，kafka只是一个中间件，后面可能关联各种各样的服务，消息被这些服务消费之后，进行后续操作时，例如保存数据库，如果失败了，自动提交offset就会出现问题。这个消息我们并没用成功处理，我们不应该让kafka确认消费。
+
+适合不严谨的场景，比如日志收集发送
+```
+
+- 手工提交offset
+	- 同步 commitSync 阻塞当前线程 
+		- 优点：失败重试，（内部机制，不保证100%）
+		- 缺点：同步请求，会阻塞线程，使用较少
+	- 异步 commitAsync 不会阻塞当前线程 
+		- 优点：不会阻塞当前线程，回调callback函数获取提交信息，记录日志
+		- 缺点：没有失败重试
+
+
+**更改配置：**：
+```java
+properties.put("enable.auto.commit", "false");
+```
+
+**测试代码：**
+```java
+public void simpleConsumer(){
+    Properties properties = getProperties();
+    KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<String, String>(properties);
+    kafkaConsumer.subscribe(Arrays.asList("demo-topic"));
+    while (true){
+        ConsumerRecords<String, String> poll = kafkaConsumer.poll(Duration.ofMillis(100));
+        for (ConsumerRecord record : poll){
+            System.err.printf("topic = %s, offset = %d, key = %s, value = %s%n",record.topic(), record.offset(), record.key(), record.value());
+        }
+        // 缺点：同步请求，会阻塞线程，使用较少
+        // 优点：失败重试，（内部机制，不保证100%）
+        // kafkaConsumer.commitSync();
+
+        if (!poll.isEmpty()){
+        	// 异步
+            kafkaConsumer.commitAsync((map, e) -> {
+                if (e == null){
+                    System.out.println("提交成功！" + map.toString());
+                }else {
+                    e.printStackTrace();
+                }
+            });
+        }
+    }
+}
+```
