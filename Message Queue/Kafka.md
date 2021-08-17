@@ -7,7 +7,7 @@
     - [4.1 命令行进行生产和消费](#41-命令进行生产和消费)
     - [4.2 Kafka消费者组配置实现点对点消费模型](#42-Kafka消费者组配置实现点对点消费模型)
     - [4.3 Kafka消费者组配置实现发布订阅消费模型](#43-Kafka消费者组配置实现发布订阅消费模型)
-    - [4.5 Kafka数据存储流程和原理概述和LEO+HW讲解](#45-Kafka数据存储流程和原理概述和LEO-HW讲解)
+    - [4.5 Kafka数据存储流程和原理概述和LEO+HW讲解](#45-Kafka数据存储流程和原理概述和LEOHW讲解)
 - [五、Springboot整合kafka](#五Springboot整合kafka)
     - [5.1 Admin相关Api](#51-Admin相关Api)
         - [5.1.1 配置客户端](#511-配置客户端)
@@ -29,7 +29,11 @@
         - [5.3.3 Kafka调试日志配置](#533-Kafka调试日志配置)
         - [5.3.4 Consumer配置和消费订阅](#534-Consumer配置和消费订阅)
         - [5.3.5 手工提交offset](#535-手工提交offset)
-
+- [六、kafka可靠性保证](#六kafka可靠性保证)
+    - [6.1 副本Replica+ACK](#61-副本ReplicaACK)
+    - [6.2 in-sync-replica-set机制](#62-in-sync-replica-set机制)
+    - [6.3 HighWatermark的作用](#63-HighWatermark的作用)
+- [七、kafka高可用和高性能](#七kafka高可用和高性能)
 # Kafka
 
 ## 一、了解Kafka
@@ -749,3 +753,80 @@ public void simpleConsumer(){
     }
 }
 ```
+
+## 六、kafka可靠性保证
+
+### 6.1 副本Replica+ACK
+
+- 生产者发送数据流程:
+    - 1、producer 发送到指定的 topic
+    - 2、topic 发送 ack 确认收到
+    - 3、producer 收到 ack 进行下一轮的发送，否则重新发送数据
+
+- 副本数据同步机制：
+    - 当producer在向partition中写数据时，根据ack机制，默认ack=1，只会向leader中写入数据
+    - 然后leader中的数据会复制到其他的replica中，follower会周期性的从leader中pull数据
+    - 对于数据的读写操作都在leader replica中，follower副本只是当leader副本挂了后才重新选取leader
+
+**问题：** follower并不向外提供服务，假如还没同步完成，leader副本就宕机了，怎么办？
+```
+首先，kafka通过LEO+HW 保证了消费者可见数据的同一性。其次，kafka对这个ack返回机制，提供了多种模式。
+```
+**要追求高吞吐量，那么就要放弃可靠性，两者不可兼得。**
+
+- ack=0
+    - producer发送一次就不再发送了，不管是否发送成功
+    - 发送出去的消息还在半路，或者还没写入磁盘， Partition Leader所在Broker就直接挂了，客户端认为消息发送成功了，此时就会导致这条消息就丢失
+
+- ack=1(默认)
+    - 只要Partition Leader接收到消息而且写入【本地磁盘】，就认为成功了，不管他其他的Follower有没有同步过去这条消息了
+    - 万一Partition Leader刚刚接收到消息，Follower还没来得及同步过去，结果Leader所在的broker宕机了
+
+- ack= all（即-1）
+    - producer只有收到分区内所有副本的成功写入全部落盘的通知才认为推送消息成功
+    ```
+    1、如果出现一个follower一直同步不成功，难道一直不返回ack吗？
+
+        Leader会维护一个ISR（副本集合，包括leader自身），里面会记录所有的副本，当kafka任务某一个副本失去连接的时候，会在ISR中将该副本提出，ISR是动态变化的。
+    
+    2、acks=all 就可以代表数据一定不会丢失了吗？
+
+        - Partition只有一个副本，也就是一个Leader，任何Follower都没有
+        - 接收完消息后宕机，也会导致数据丢失，acks=all，必须跟ISR列表里至少有2个以上的副本配合使用
+        - 在设置request.required.acks=-1的同时，也要min.insync.replicas这个参数设定 ISR中的最小副本数是多少，默认值为1，改为 >=2，如果ISR中的副本数少于min.insync.replicas配置的数量时，客户端会返回异常
+    
+    3、ack= all还有可能会导致数据重复
+
+        数据发送到leader后 ，部分ISR的副本同步，leader此时挂掉，ack还没有返回。producer端会得到返回异常，producer端会重新发送数据，数据可能会重复。
+    ```
+
+### 6.2 in-sync-replica-set机制
+- 什么是ISR (in-sync replica set )
+    - leader会维持一个与其保持同步的replica集合，该集合就是ISR，**每一个leader partition都有一个ISR，leader动态维护**, 要保证kafka不丢失message，就要保证ISR这组集合存活（至少有一个存活），并且消息commit成功
+    - Partition leader 保持同步的 Partition Follower 集合, 当 ISR 中的Partition Follower 完成数据的同步之后，就会给 leader 发送 ack
+    - 如果Partition follower长时间(**replica.lag.time.max.ms**) 未向leader同步数据，则该Partition Follower将被踢出ISR
+    - Partition Leader 发生故障之后，就**会从 ISR 中选举新的 Partition Leader**。
+
+- OSR （out-of-sync-replica set）
+    - 与leader副本分区 同步滞后过多的副本集合
+
+- AR（Assign Replicas）
+    - 分区中所有副本统称为AR, AR = ISR + OSR
+
+### 6.3 HighWatermark的作用
+保证消费数据的一致性和副本数据的一致性
+```
+假设没有HW,消费者消费leader到15，下面消费者应该消费16。
+​
+此时leader挂掉,选下面某个follower为leader，此时消费者找新leader消费数据，发现新Leader没有16数据，报错。
+​
+HW(High Watermark)是所有副本中最小的LEO。
+```
+
+- **Follower故障**
+    - Follower发生故障后会被临时踢出ISR（动态变化），待该follower恢复后，follower会读取本地的磁盘记录的上次的HW，并将该log文件高于HW的部分截取掉，从HW开始向leader进行同步，等该follower的LEO大于等于该Partition的hw，即follower追上leader后，就可以重新加入ISR
+
+- **Leader故障**
+    - Leader发生故障后，会从ISR中选出一个新的leader，为了保证多个副本之间的数据一致性，其余的follower会先将各自的log文件高于hw的部分截掉（新leader自己不会截掉），然后从新的leader同步数据
+
+## 七、kafka高可用和高性能
