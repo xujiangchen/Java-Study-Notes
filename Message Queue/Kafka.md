@@ -1,39 +1,46 @@
-- [一、了解Kafka](#一了解Kafka)
-- [二、Kafka核心概念](#二Kafka核心概念)
-- [三、Linux环境中安装Kafka](#三Linux环境中安装Kafka)
-    - [3.1 安装Zookeeper](#31-安装Zookeeper)
-    - [3.2 安装Kafka](#32-安装Kafka)
-- [四、Kafka点对点-发布订阅](#四Kafka点对点-发布订阅)
-    - [4.1 命令行进行生产和消费](#41-命令进行生产和消费)
-    - [4.2 Kafka消费者组配置实现点对点消费模型](#42-Kafka消费者组配置实现点对点消费模型)
-    - [4.3 Kafka消费者组配置实现发布订阅消费模型](#43-Kafka消费者组配置实现发布订阅消费模型)
-    - [4.5 Kafka数据存储流程和原理概述和LEO+HW讲解](#45-Kafka数据存储流程和原理概述和LEOHW讲解)
-- [五、Springboot整合kafka](#五Springboot整合kafka)
-    - [5.1 Admin相关Api](#51-Admin相关Api)
-        - [5.1.1 配置客户端](#511-配置客户端)
-        - [5.1.2 创建Topic](#512-创建Topic)
-        - [5.1.3 列举Topic](#513-列举Topic)
-        - [5.1.4 删除Topic](#514-删除Topic)
-        - [5.1.5 查看Topic详情](#515-查看Topic详情)
-        - [5.1.6 增加分区数量](#516-增加分区数量)
-    - [5.2 生产者相关Api](#52-生产者相关Api)
-        - [5.2.1 发送分区策略和常见配置](#521-发送分区策略和常见配置)
-        - [5.2.2 封装配置属性](#522-封装配置属性)
-        - [5.2.3 生产者投递消息(同步发送)](#523-生产者投递消息(同步发送))
-        - [5.2.4 回调函数](#524-回调函数)
-        - [5.2.5 生产者发送指定分区](#525-生产者发送指定分区)
-        - [5.2.6 生产者自定义partition分区规则](#526-生产者自定义partition分区规则)
-    - [5.3 消费者相关Api](#53消费者相关Api)
-        - [5.3.1 消费者机制和分区策略](#531-消费者机制和分区策略)
-        - [5.3.2 消费者重新分配策略和offset维护机制](#532-消费者重新分配策略和offset维护机制)
-        - [5.3.3 Kafka调试日志配置](#533-Kafka调试日志配置)
-        - [5.3.4 Consumer配置和消费订阅](#534-Consumer配置和消费订阅)
-        - [5.3.5 手工提交offset](#535-手工提交offset)
-- [六、kafka可靠性保证](#六kafka可靠性保证)
-    - [6.1 副本Replica+ACK](#61-副本ReplicaACK)
+- [Kafka](#kafka)
+  - [一、了解Kafka](#一了解kafka)
+  - [二、Kafka核心概念](#二kafka核心概念)
+  - [三、Linux环境中安装Kafka](#三linux环境中安装kafka)
+    - [3.1 安装Zookeeper](#31-安装zookeeper)
+    - [3.2 安装Kafka](#32-安装kafka)
+  - [四、Kafka点对点-发布订阅](#四kafka点对点-发布订阅)
+    - [4.1 命令行进行生产和消费](#41-命令行进行生产和消费)
+    - [4.2 Kafka消费者组配置实现点对点消费模型](#42-kafka消费者组配置实现点对点消费模型)
+    - [4.3 Kafka消费者组配置实现发布订阅消费模型](#43-kafka消费者组配置实现发布订阅消费模型)
+    - [4.5 Kafka数据存储流程和原理概述和LEO+HW讲解](#45-kafka数据存储流程和原理概述和leohw讲解)
+  - [五、Springboot整合kafka](#五springboot整合kafka)
+    - [5.1 Admin相关Api](#51-admin相关api)
+      - [5.1.1 配置客户端](#511-配置客户端)
+      - [5.1.2 创建Topic](#512-创建topic)
+      - [5.1.3 列举Topic](#513-列举topic)
+      - [5.1.4 删除Topic](#514-删除topic)
+      - [5.1.5 查看Topic详情](#515-查看topic详情)
+      - [5.1.6 增加分区数量](#516-增加分区数量)
+    - [5.2 生产者相关Api](#52-生产者相关api)
+      - [5.2.1 发送分区策略和常见配置](#521-发送分区策略和常见配置)
+      - [5.2.2 封装配置属性](#522-封装配置属性)
+      - [5.2.3 生产者投递消息(同步发送)](#523-生产者投递消息同步发送)
+      - [5.2.4 回调函数](#524-回调函数)
+      - [5.2.5 生产者发送指定分区](#525-生产者发送指定分区)
+      - [5.2.6 生产者自定义partition分区规则](#526-生产者自定义partition分区规则)
+    - [5.3 消费者相关Api](#53-消费者相关api)
+      - [5.3.1 消费者机制和分区策略](#531-消费者机制和分区策略)
+      - [5.3.2 消费者重新分配策略和offset维护机制](#532-消费者重新分配策略和offset维护机制)
+      - [5.3.3 Kafka调试日志配置](#533-kafka调试日志配置)
+      - [5.3.4 Consumer配置和消费订阅](#534-consumer配置和消费订阅)
+      - [5.3.5 手工提交offset](#535-手工提交offset)
+  - [六、kafka可靠性保证](#六kafka可靠性保证)
+    - [6.1 副本Replica+ACK](#61-副本replicaack)
     - [6.2 in-sync-replica-set机制](#62-in-sync-replica-set机制)
-    - [6.3 HighWatermark的作用](#63-HighWatermark的作用)
-- [七、kafka高可用和高性能](#七kafka高可用和高性能)
+    - [6.3 HighWatermark的作用](#63-highwatermark的作用)
+  - [七、kafka高可用和高性能](#七kafka高可用和高性能)
+    - [7.1 搭建kafka集群](#71-搭建kafka集群)
+    - [7.2 Springboot连接kafka集群](#72-springboot连接kafka集群)
+    - [7.3 日志数据清理](#73-日志数据清理)
+    - [7.4 ZeroCopy](#74-zerocopy)
+
+
 # Kafka
 
 ## 一、了解Kafka
@@ -830,3 +837,126 @@ HW(High Watermark)是所有副本中最小的LEO。
     - Leader发生故障后，会从ISR中选出一个新的leader，为了保证多个副本之间的数据一致性，其余的follower会先将各自的log文件高于hw的部分截掉（新leader自己不会截掉），然后从新的leader同步数据
 
 ## 七、kafka高可用和高性能
+
+### 7.1 搭建kafka集群
+```
+# 解压
+tar -zvxf kafka_2.13-2.8.0.tgz
+
+# 对解压文件重命名，方便管理
+mv kafka_2.13-2.8.0 kafka
+
+# 编辑配置文件
+1. broker.id                # 节点id,配置不同的id
+2. listeners                # 局域网IP,内网部署 kafka 集群只需要用到 listeners
+3. advertised.listeners     # 外网IP,内外网需要作区分时 才需要用到advertised.listeners
+4. port                     # 添加端口属性，指定端口，每个节点都不一样
+5. log.dirs                 # 日志存储位置
+6. zookeeper.connect        # zk地址,集群的话用逗号分隔
+
+# 启动kafka
+./kafka-server-start.sh -daemon ../config/server.properties &   # 守护进程启动
+​
+./kafka-server-start.sh ../config/server.properties &       # 非守护进程启动
+```
+### 7.2 Springboot连接kafka集群
+```java
+public class Admin {
+
+    private static final String TOPIC_NAME = "demo-cluster-topic";
+
+
+    public static AdminClient initAdminClient(){
+        Properties properties = new Properties();
+        properties.setProperty(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, "118.191.132.65:9092,118.191.132.65:9093,118.191.132.65:9094");
+        AdminClient adminClient = AdminClient.create(properties);
+        return adminClient;
+    }
+
+    /**
+     * 创建topic
+     */
+    @Test
+    public void creatTopic(){
+        AdminClient adminClient = initAdminClient();
+        NewTopic newTopic = new NewTopic(TOPIC_NAME, 6, (short) 3);
+        CreateTopicsResult topics = adminClient.createTopics(Arrays.asList(newTopic));
+        try {
+            topics.all().get();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 查看topic
+     */
+    @Test
+    public void listTopic(){
+        AdminClient adminClient = initAdminClient();
+        ListTopicsResult listTopicsResult = adminClient.listTopics();
+
+        try {
+            Set<String> strings = listTopicsResult.names().get();
+            for (String item : strings){
+                System.err.println(item);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+}
+
+```
+
+### 7.3 日志数据清理
+
+Kafka将数据持久化到了硬盘上，为了控制磁盘容量，需要对过去的消息进行清理。kafka并不是为了做存储使用的。
+
+- kafka的默认配置：
+  - 内部有个定时任务检测删除日志，默认是5分钟 `log.retention.check.interval.ms`
+  - 支持配置策略对数据清理
+  - 根据segment单位进行定期清理
+
+
+- 启用cleaner
+  - log.cleaner.enable=true
+  - log.cleaner.threads = 2 (清理线程数配置)
+
+**在kafka中，清理日志给出了两大类的策略：日志删除 和 日志压缩**
+- 日志删除 `log.cleanup.policy=delete`
+```
+#清理超过指定时间的消息,默认是168小时，7天，
+#还有log.retention.ms, log.retention.minutes, log.retention.hours，优先级高到低
+log.retention.hours=168
+​
+#超过指定大小后，删除旧的消息，下面是1G的字节数，-1就是没限制
+log.retention.bytes=1073741824
+​
+还有基于日志起始位移（log start offset)，未来社区还有更多
+
+
+问题一：配置了7天后删除，那7天如何确定呢？
+​
+每个日志段文件都维护一个最大时间戳字段，每次日志段写入新的消息时，都会更新该字段,一个日志段segment写满了被切分之后，就不再接收任何新的消息，最大时间戳字段的值也将保持不变,kafka通过将当前时间与该最大时间戳字段进行比较，从而来判定是否过期
+
+log.retention.bytes和log.retention.minutes任意一个达到要求，都会执行删除
+```
+- 日志压缩 `log.cleanup.policy=compact`
+```
+按照消息key进行整理，有相同key不同value值，只保留最后一个
+```
+
+### 7.4 ZeroCopy
+Linux有两个上下文，内核态，用户态。
+
+- 原始的文件发送：
+  - 调用read,将文件拷贝到了kernel内核态
+  - CPU控制 kernel态的数据copy到用户态
+  - 调用write时，user态下的内容会copy到内核态的socket的buffer中
+  - 最后将内核态socket buffer的数据copy到网卡设备中传送
+  
+- zero拷贝
+  - 请求kernel直接把disk的data传输给socket，而不是通过应用程序传输。Zero copy大大提高了应用程序的性能，减少不必要的内核缓冲区跟用户缓冲区间的拷贝，从而减少CPU的开销和减少了kernel和user模式的上下文切换，达到性能的提升 
